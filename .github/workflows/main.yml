@@ -14,13 +14,27 @@ env:
 
 jobs:
   build-ios:
-    runs-on: macos-15
+    runs-on: macos-15     # если Xcode 26 тут нет, поменяй на macos-26
     timeout-minutes: 60
 
     steps:
       - uses: actions/checkout@v4
         with:
           lfs: true       # на случай mp4/ogv из .gitattributes
+
+      - name: Select newest stable Xcode (need iOS 26 SDK)
+        run: |
+          set -euo pipefail
+          ls -d /Applications/Xcode*.app
+          XC=$(ls -d /Applications/Xcode_*.app | grep -viE 'beta|rc|candidate' | sort -V | tail -1)
+          echo "Using: $XC"
+          sudo xcode-select -s "$XC/Contents/Developer"
+          xcodebuild -version
+          MAJOR=$(xcodebuild -version | awk 'NR==1{print $2}' | cut -d. -f1)
+          if [ "$MAJOR" -lt 26 ]; then
+            echo "::error::Нужен Xcode 26+ (iOS 26 SDK). Смени runs-on на macos-26."
+            exit 1
+          fi
 
       - name: Install Godot and export templates
         run: |
